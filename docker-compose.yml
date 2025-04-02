@@ -1,0 +1,107 @@
+version: '3.8'
+
+services:
+  nginx:
+    image: nginx:latest
+    container_name: bitrix_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - bitrix_files:/var/www/html
+      - nginx-logs:/var/log/nginx
+    depends_on:
+      - php
+    networks:
+      - bitrix_net
+
+  php:
+    build:
+      context: ./php
+      dockerfile: Dockerfile
+    container_name: bitrix_php
+    volumes:
+      - bitrix_files:/var/www/html
+      - php-logs:/var/log/php
+      - sessions:/var/lib/php/sessions
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - bitrix_net
+
+  mysql:
+    image: mysql:8.0
+    container_name: bitrix_mysql
+    restart: always
+    environment:
+      MYSQL_DATABASE: bitrix_db
+      MYSQL_USER: bitrix_user
+      MYSQL_PASSWORD: bitrix_pass
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - bitrix_net
+
+  adminer:
+    image: adminer
+    container_name: bitrix_adminer
+    restart: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
+    networks:
+      - bitrix_net
+
+  redis:
+    image: redis:latest
+    container_name: bitrix_redis
+    restart: always
+    networks:
+      - bitrix_net
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus:/etc/prometheus/
+    container_name: bitrix_prometheus
+    hostname: prometheus
+    command: 
+      - --config.file=/etc/prometheus/prometheus.yml
+    ports:
+      - 9090:9090
+    restart: always
+    environment:
+      TZ: "Europe/Moscow"
+    networks:
+      - bitrix_net
+
+  grafana:
+    image: grafana/grafana:latest
+    user: root
+    depends_on:
+      - prometheus
+    volumes:
+      - ./grafana:/var/lib/grafana
+      - ./grafana/provisioning/:/etc/grafana/provisioning/
+    container_name: bitrix_grafana
+    hostname: grafana
+    ports:
+      - 3000:3000
+    restart: always
+    environment: 
+      TZ: "Europe/Moscow"
+    networks:
+      - bitrix_net
+
+volumes:
+  mysql-data:
+  nginx-logs:
+  php-logs:
+  bitrix_files:
+  sessions:
+
+networks:
+  bitrix_net:

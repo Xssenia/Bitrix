@@ -1,0 +1,5 @@
+scrape_configs:
+  - job_name: 'bitrix_metrics'
+    metrics_path: /bitrix_metrics.php
+    static_configs:
+      - targets: ['bitrix_nginx:80']
